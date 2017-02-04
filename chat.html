@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta charset="UTF-8">
+    <title>聊天室</title>
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="node_modules/moment/moment.js"></script>
+    <script src="node_modules/moment/locale/zh-cn.js"></script>
+    <style>
+        .msgList {
+            height: 500px;
+            overflow: auto;
+        }
+
+        .user {
+            color: blue;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="chat">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="text-center">欢迎来到我的聊天室，请选择不同的聊天室</h3>
+                        <h3 class="text-center">
+                            <button class="btn btn-success" onclick="join(event,'green')">青葱岁月</button>
+                            <button class="btn btn-danger" onclick="join(event,'red')">粉红回忆</button>
+                            <button class="btn btn-default" onclick="join(event,'publicChat')" disabled>回到大厅</button>
+                        </h3>
+                    </div>
+                    <div class="panel-body">
+                        <ul class="list-group msgList" id="msgList" onclick="selectUser(event)">
+                            <!--<li class="list-group-item">中国陆军特种部队</li>-->
+                        </ul>
+                    </div>
+                    <div class="panel-footer">
+                        <textarea id="txtContent" class="form-control" onkeydown="send(event)"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    let socket = io.connect('http://localhost:8080');
+    let txtContent = document.querySelector('#txtContent');
+    let msgList = document.querySelector('#msgList');
+
+    function socketIo() {
+        socket.on('connect', function () {
+            console.log('与服务器连接成功');
+        });
+        socket.on('message', function (msgObj) {
+            let oLi = document.createElement('li');
+            oLi.className = 'list-group-item';
+            oLi.innerHTML = format(msgObj);
+            msgList.appendChild(oLi);
+            autoScroll(); //实时滚动，滚动条
+        });
+    }
+
+    function format(msgObj) {
+        return `<span class="user">${msgObj.username}</span>：${msgObj.content} <span class="pull-right" style="color: #00b3ee">${moment(msgObj.createAt).fromNow()}</span>`;
+    }
+
+    function send(event) {
+        if (event.keyCode == 13) {
+            event.preventDefault();
+            socket.send(txtContent.value);
+            txtContent.value = '';
+        }
+    }
+
+    function autoScroll() {
+        var timer = setInterval(function () {
+            var lastScrollTop = msgList.scrollTop;
+            msgList.scrollTop = lastScrollTop + 5;
+            if (msgList.scrollTop == lastScrollTop) {
+                clearInterval(timer);
+            }
+        }, 10);
+    }
+
+    function getAllMessage() {
+        socket.emit('getAllMessages');
+    }
+
+    socket.on('allMessage', function (messages) {
+        var li = '';
+        messages.forEach(function (message) {
+            li += `<li class="list-group-item">${format(message)}</li>`;
+        });
+        msgList.innerHTML = li;
+    });
+
+    function selectUser(event) {
+        if (/(^| )user($| )/.test(event.target.className)) {
+            txtContent.value = `@${event.target.innerHTML} `;
+            txtContent.focus();
+        }
+    }
+
+    function join(event, rootName) {
+        socket.emit('join', rootName);
+        var btns = document.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].removeAttribute('disabled');
+        }
+        event.target.setAttribute('disabled', 'disabled');
+    }
+
+
+    socketIo();
+    getAllMessage();
+</script>
+</body>
+</html>
