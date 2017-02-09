@@ -1,5 +1,5 @@
 let mongoose = require('mongoose');
-mongoose.connect('mongodb://127.0.0.1/chat');
+mongoose.connect('mongodb://localhost/chat');
 let MessageSchema = new mongoose.Schema({
     username: String,
     content: String,
